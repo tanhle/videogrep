@@ -356,7 +356,7 @@ def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, 
     foundSearchTerm = False
 
     if extract:
-        extract_words(inputfile, padding, uuid, confidence, outptufile)
+        extract_words(inputfile, padding, uuid, confidence, outputfile)
         return
 
     def getWords(text):
