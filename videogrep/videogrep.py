@@ -176,10 +176,10 @@ def create_supercut(composition, outputfile, padding):
     cut_clips = [videofileclips[c['file']].subclip(c['start'], c['end']) for c in composition]
 
     print "[+] Concatenating clips."
-    final_clip = concatenate(cut_clips)
+    final_clip = concatenate(cut_clips, method='chain')
 
     print "[+] Writing ouput file."
-    final_clip.to_videofile(outputfile, codec="libx264", temp_audiofile='temp-audio.m4a', audio_codec='aac', remove_temp=True, fps=23)
+    final_clip.to_videofile(outputfile, codec="libx264", temp_audiofile='temp-audio.m4a', audio_codec='aac', remove_temp=False, fps=23)
 
 
 
@@ -210,7 +210,7 @@ def create_supercut_in_batches(composition, outputfile, padding):
     print batch_comp
     clips = [VideoFileClip(filename) for filename in batch_comp]
     print clips
-    video = concatenate(clips)
+    video = concatenate(clips, method='chain')
     video.to_videofile(outputfile, codec="libx264", temp_audiofile='temp-audio.m4a', remove_temp=False, audio_codec='aac', fps=23)
 
 
@@ -344,7 +344,7 @@ def compose_from_transcript(files, search, searchtype):
     return final_segments
 
 
-def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, test=False, randomize=False, sync=0, use_transcript=False):
+def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, test=False, randomize=False, sync=0, use_transcript=False, extract=False, uuid=False, confidence=0.0):
     """Search through and find all instances of the search term in an srt or transcript,
     create a supercut around that instance, and output a new video file
     comprised of those supercuts.
@@ -354,7 +354,11 @@ def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, 
     sync = sync / 1000.0
     composition = []
     foundSearchTerm = False
-    import re
+
+    if extract:
+        extract_words(inputfile, padding, uuid, confidence, outptufile)
+        return
+
     def getWords(text):
         return re.compile('\w+').findall(text)
     words = getWords(search)
@@ -435,6 +439,52 @@ def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, 
                 else:
                     create_supercut(composition, outputfile, padding)
 
+def extract_words(files, padding, uuid=False, confidence = 0.0, output_directory='extracted_words'):
+    ''' Extracts individual words form files and exports them to individual files. '''
+    segments = []
+    for s in audiogrep.convert_timestamps(files):
+        for w in s['words']:
+            if w[3] < confidence:
+                continue
+            print w
+            try:
+              float(w[1])
+            except:
+              continue
+            seg = {
+                'word': w[0],
+                'file': s['file'].replace('.transcription.txt',''),
+                'line': w[0],
+                'start': float(w[1]),
+                'end': float(w[2])
+            }
+            segments.append(seg)
+    composition = segments
+    # apply padding and sync
+    for c in composition:
+        c['start'] = c['start'] - padding
+        c['end'] = c['end'] + padding
+    all_filenames = set([c['file'] for c in composition])
+    videofileclips = dict([(f, VideoFileClip(f)) for f in all_filenames])
+    cut_clips = []
+    for c in composition:
+      try:
+        subclip = videofileclips[c['file']].subclip(c['start'], c['end'])
+        cut_clips.append((c['word'], subclip))
+      except:
+        continue
+    from collections import defaultdict
+    wc = defaultdict(int)
+    for word, clip in cut_clips:
+        print word, clip
+        wc[word] += 1
+        word_id = str(wc[word])
+        path = output_directory + "/" + word
+        if not os.path.exists(path):
+            os.makedirs(path)
+        clip.to_videofile(path + "/" + word_id + ".mp4" , codec="libx264", temp_audiofile='temp-audio.m4a', audio_codec='aac', remove_temp=True, fps=23)
+
+
 
 def main():
     import argparse
@@ -452,17 +502,20 @@ def main():
     parser.add_argument('--padding', '-p', dest='padding', default=0, type=int, help='padding in milliseconds to add to the start and end of each clip')
     parser.add_argument('--resyncsubs', '-rs', dest='sync', default=0, type=int, help='Subtitle re-synch delay +/- in milliseconds')
     parser.add_argument('--transcribe', '-tr', dest='transcribe', action='store_true', help='Transcribe the video using audiogrep. Requires pocketsphinx')
+    parser.add_argument('--extract', '-e', dest='extract', action='store_true', help='Extract words from transcript')
+    parser.add_argument('--use-uuid', dest='uuid', action='store_true', help='Use uuids for word clips')
+    parser.add_argument('--confidence-threshold', '-ct', dest='confidence', action='store_true', help='Filter by confidence when extracting')
 
     args = parser.parse_args()
 
-    if not args.transcribe:
+    if not args.transcribe and not args.extract:
         if args.search is None:
              parser.error('argument --search/-s is required')
 
     if args.transcribe:
         create_timestamps(args.inputfile)
     else:
-        videogrep(args.inputfile, args.outputfile, args.search, args.searchtype, args.maxclips, args.padding, args.demo, args.randomize, args.sync, args.use_transcript)
+        videogrep(args.inputfile, args.outputfile, args.search, args.searchtype, args.maxclips, args.padding, args.demo, args.randomize, args.sync, args.use_transcript, args.extract, args.uuid, args.confidence)
 
 
 if __name__ == '__main__':
