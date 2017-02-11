@@ -9,6 +9,8 @@ import pattern
 import searcher
 import audiogrep
 
+import uuid
+
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.compositing.concatenate import concatenate
 
@@ -344,7 +346,7 @@ def compose_from_transcript(files, search, searchtype):
     return final_segments
 
 
-def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, test=False, randomize=False, sync=0, use_transcript=False, extract=False, uuid=False, confidence=0.0):
+def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, test=False, randomize=False, sync=0, use_transcript=False, extract=False, use_uuid=False, confidence=0.0):
     """Search through and find all instances of the search term in an srt or transcript,
     create a supercut around that instance, and output a new video file
     comprised of those supercuts.
@@ -356,7 +358,7 @@ def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, 
     foundSearchTerm = False
 
     if extract:
-        extract_words(inputfile, padding, uuid, confidence, outputfile)
+        extract_words(inputfile, padding, use_uuid, confidence, outputfile)
         return
 
     def getWords(text):
@@ -477,8 +479,11 @@ def extract_words(files, padding, uuid=False, confidence = 0.0, output_directory
     wc = defaultdict(int)
     for word, clip in cut_clips:
         print word, clip
-        wc[word] += 1
-        word_id = str(wc[word])
+        if use_uuid:
+            word_id = str(uuid.uuid1())
+        else:
+            wc[word] += 1
+            word_id = str(wc[word])
         path = output_directory + "/" + word
         if not os.path.exists(path):
             os.makedirs(path)
@@ -503,7 +508,7 @@ def main():
     parser.add_argument('--resyncsubs', '-rs', dest='sync', default=0, type=int, help='Subtitle re-synch delay +/- in milliseconds')
     parser.add_argument('--transcribe', '-tr', dest='transcribe', action='store_true', help='Transcribe the video using audiogrep. Requires pocketsphinx')
     parser.add_argument('--extract', '-e', dest='extract', action='store_true', help='Extract words from transcript')
-    parser.add_argument('--use-uuid', dest='uuid', action='store_true', help='Use uuids for word clips')
+    parser.add_argument('--use-uuid', dest='use_uuid', action='store_true', help='Use uuids for word clips')
     parser.add_argument('--confidence-threshold', '-ct', dest='confidence', action='store_true', help='Filter by confidence when extracting')
 
     args = parser.parse_args()
@@ -515,7 +520,7 @@ def main():
     if args.transcribe:
         create_timestamps(args.inputfile)
     else:
-        videogrep(args.inputfile, args.outputfile, args.search, args.searchtype, args.maxclips, args.padding, args.demo, args.randomize, args.sync, args.use_transcript, args.extract, args.uuid, args.confidence)
+        videogrep(args.inputfile, args.outputfile, args.search, args.searchtype, args.maxclips, args.padding, args.demo, args.randomize, args.sync, args.use_transcript, args.extract, args.use_uuid, args.confidence)
 
 
 if __name__ == '__main__':
