@@ -441,7 +441,7 @@ def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, 
                 else:
                     create_supercut(composition, outputfile, padding)
 
-def extract_words(files, padding, uuid=False, confidence = 0.0, output_directory='extracted_words'):
+def extract_words(files, padding, use_uuid=False, confidence = 0.0, output_directory='extracted_words'):
     ''' Extracts individual words form files and exports them to individual files. '''
     segments = []
     for s in audiogrep.convert_timestamps(files):
