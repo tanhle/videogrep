@@ -509,7 +509,7 @@ def main():
     parser.add_argument('--transcribe', '-tr', dest='transcribe', action='store_true', help='Transcribe the video using audiogrep. Requires pocketsphinx')
     parser.add_argument('--extract', '-e', dest='extract', action='store_true', help='Extract words from transcript')
     parser.add_argument('--use-uuid', dest='use_uuid', action='store_true', help='Use uuids for word clips')
-    parser.add_argument('--confidence-threshold', '-ct', dest='confidence', action='store_true', help='Filter by confidence when extracting')
+    parser.add_argument('--confidence-threshold', '-ct', dest='confidence', help='Filter by confidence when extracting', type=float)
 
     args = parser.parse_args()
 
