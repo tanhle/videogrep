@@ -443,6 +443,7 @@ def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, 
 
 def extract_words(files, padding, use_uuid=False, confidence = 0.0, output_directory='extracted_words'):
     ''' Extracts individual words form files and exports them to individual files. '''
+    padding = padding / 1000.0
     segments = []
     for s in audiogrep.convert_timestamps(files):
         for w in s['words']:
@@ -457,8 +458,8 @@ def extract_words(files, padding, use_uuid=False, confidence = 0.0, output_direc
                 'word': w[0],
                 'file': s['file'].replace('.transcription.txt',''),
                 'line': w[0],
-                'start': float(w[1]),
-                'end': float(w[2])
+                'start': float(w[1]) + padding,
+                'end': max(float(w[2]) - padding, 0)
             }
             segments.append(seg)
     composition = segments
@@ -509,7 +510,7 @@ def main():
     parser.add_argument('--transcribe', '-tr', dest='transcribe', action='store_true', help='Transcribe the video using audiogrep. Requires pocketsphinx')
     parser.add_argument('--extract', '-e', dest='extract', action='store_true', help='Extract words from transcript')
     parser.add_argument('--use-uuid', dest='use_uuid', action='store_true', help='Use uuids for word clips')
-    parser.add_argument('--confidence-threshold', '-ct', dest='confidence', help='Filter by confidence when extracting', type=float)
+    parser.add_argument('--confidence-threshold', '-ct', dest='confidence', action='store_true', help='Filter by confidence when extracting')
 
     args = parser.parse_args()
 
