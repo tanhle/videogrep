@@ -443,13 +443,11 @@ def videogrep(inputfile, outputfile, search, searchtype, maxclips=0, padding=0, 
 
 def extract_words(files, padding, use_uuid=False, confidence = 0.0, output_directory='extracted_words'):
     ''' Extracts individual words form files and exports them to individual files. '''
-    padding = padding / 1000.0
     segments = []
     for s in audiogrep.convert_timestamps(files):
         for w in s['words']:
             if w[3] < confidence:
                 continue
-            print w
             try:
               float(w[1])
             except:
@@ -458,8 +456,8 @@ def extract_words(files, padding, use_uuid=False, confidence = 0.0, output_direc
                 'word': w[0],
                 'file': s['file'].replace('.transcription.txt',''),
                 'line': w[0],
-                'start': float(w[1]) + padding,
-                'end': max(float(w[2]) - padding, 0)
+                'start': float(w[1]),
+                'end': float(w[2])
             }
             segments.append(seg)
     composition = segments
@@ -472,9 +470,12 @@ def extract_words(files, padding, use_uuid=False, confidence = 0.0, output_direc
     cut_clips = []
     for c in composition:
       try:
-        subclip = videofileclips[c['file']].subclip(c['start'], c['end'])
+        clip = videofileclips[c['file']]
+        start = max(0, c['start'] - padding)
+        end = min(c['end'] + padding, clip.duration)
+        subclip = clip.subclip(start, end)
         cut_clips.append((c['word'], subclip))
-      except:
+      except Exception as e:
         continue
     from collections import defaultdict
     wc = defaultdict(int)
